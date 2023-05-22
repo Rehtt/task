@@ -1,0 +1,10 @@
+version: '3.3'
+services:
+  <service-name-imageName>-drone:
+    container_name: ${imageName}
+    image: ${imageName}:${version}
+#    ports:
+#      - "7320:8080"
+    restart: always
+    volumes:
+      - /docker/auto_pipe/${imageName}/save:/save

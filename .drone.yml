@@ -1,0 +1,57 @@
+kind: pipeline
+type: exec
+name: deployment
+
+platform:
+  os: linux
+  arch: amd64
+node:
+  server: docker-p.home.rehtt.com   #指定打包部署的机器
+steps:
+  - name: build and deployment
+    commands:
+      - tar -cf a.tar *   #将项目打包，方便在docker中编译
+      - imageName=$(basename $(git rev-parse --show-toplevel))    #镜像名使用项目名
+      - sed "s/<service-name-imageName>/$imageName/g" .docker-compose.yaml | tee docker-compose.yaml    #替换docker-compose.yaml文件镜像名
+      - version=$(git rev-parse --short HEAD)   #版本号使用git hash
+      - docker build --no-cache -t $imageName:$version .    #打包镜像
+      - echo "version=$version" > .env    #docker-compose.yaml环境变量
+      - echo "imageName=$imageName" >> .env
+      - docker-compose up -d    #启动
+      - docker system prune -a -f   #清理
+    when:
+      branch:
+        - main
+        - master
+
+
+---
+kind: pipeline
+type: docker
+name: notify
+
+clone:
+  disable: true
+node:
+  server: rehtt.com
+steps:
+  - name: email
+    image: drillster/drone-email
+    settings:
+      recipients_only: true
+      recipients:
+        from_secret: email_recipients
+      subject: "Drone build: [{{ build.status }}] {{ repo.name }} ({{ repo.branch }}) #{{ build.number }}"
+      host: smtp.mxhichina.com
+      port: 25
+      from:
+        from_secret: email_username
+      username:
+        from_secret: email_username
+      password:
+        from_secret: email_password
+
+trigger:
+  status: [ success, failure ]
+
+depends_on: [ deployment ]
