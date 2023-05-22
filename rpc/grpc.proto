@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package Rpc;
+option go_package = "github.com/Rehtt/task/rpc;rpc";
+
+service Job {
+  rpc GetJob(ServiceInfo) returns (GetJobRes) {}
+  rpc JobErr(Err) returns (Null) {}
+}
+
+message Null {}
+
+message Err {
+  string id = 1;
+  string error = 2;
+  string error_msg = 3;
+  ServiceInfo info = 4;
+}
+
+message ServiceInfo {
+  string version = 1;
+  string uuid = 2;
+  string os = 3;
+}
+message GetJobRes {
+  repeated JobInfo job_list = 1;
+}
+message JobInfo {
+  string id = 1;
+  optional string url = 2;
+  string command = 3;
+  optional int64 run_repetition = 4;
+  optional int64 run_interval = 5;
+  optional int64 run_timeout = 6;
+  optional string run_time = 7; // 指定时间，只执行一次，yyyy-MM-dd hh:mm:ss
+}
