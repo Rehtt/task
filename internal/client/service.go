@@ -20,10 +20,20 @@ type Program struct {
 	sTime   time.Duration
 	sTick   *time.Ticker
 	service service.Service
+	ctx     context.Context
+	cancel  context.CancelFunc
+	run     chan struct{}
 }
 
 var ServerAddr string
 
+func NewProgram() *Program {
+	ctx, ca := context.WithCancel(context.Background())
+	return &Program{
+		ctx:    ctx,
+		cancel: ca,
+	}
+}
 func (p *Program) Start(s service.Service) error {
 	logs.Info("service start")
 	p.service = s
@@ -35,19 +45,18 @@ func (p *Program) Start(s service.Service) error {
 	c := rpc.NewJobClient(conn)
 	p.sTick = time.NewTicker(p.sTime)
 	go func(c rpc.JobClient) {
-		ctx := context.Background()
 		info := &rpc.ServiceInfo{
 			Version: Version,
 			Uuid:    SystemUUID,
 			Os:      SystemOS,
 		}
 		for {
-			resp, err := c.GetJob(ctx, info)
+			resp, err := c.GetJob(p.ctx, info)
 			if err == nil {
 				for _, job := range resp.GetJobList() {
 					go func() {
 						if msg, err := p.handle(job); err != nil {
-							c.JobErr(ctx, &rpc.Err{
+							c.JobErr(p.ctx, &rpc.Err{
 								Id:       job.Id,
 								Error:    err.Error(),
 								ErrorMsg: msg,
@@ -65,6 +74,7 @@ func (p *Program) Start(s service.Service) error {
 
 func (p *Program) Stop(s service.Service) error {
 	logs.Info("service stop")
+	p.cancel()
 	return nil
 }
 

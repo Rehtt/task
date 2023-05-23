@@ -28,7 +28,7 @@ func init() {
 	}
 
 	var err error
-	taskservice, err = service.New(&client.Program{}, sConfig)
+	taskservice, err = service.New(client.NewProgram(), sConfig)
 	if err != nil {
 		logs.Fatal("service new error: %s", err)
 	}
